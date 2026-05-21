@@ -1,0 +1,61 @@
+name: Multi-Platform Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Build on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [windows-latest, ubuntu-latest, macos-latest]
+
+    steps:
+    - name: Checkout Repository
+      uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+
+    - name: Install Common Dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install customtkinter pillow pyinstaller
+
+  
+    - name: Build Windows Setup Installer
+      if: matrix.os == 'windows-latest'
+      run: |
+        pyinstaller --noconfirm --onefile --windowed --add-data "icon.ico;." --icon=icon.ico --name "BacklogTracker" backlog_tracker.py
+        "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" setup.iss
+
+    - name: Build Linux Portable Binary
+      if: matrix.os == 'ubuntu-latest'
+      run: |
+        pyinstaller --noconfirm --onefile --windowed --add-data "icon.ico:." --name "BacklogTracker" backlog_tracker.py
+        tar -czf dist/BacklogTracker_Linux.tar.gz -C dist BacklogTracker
+
+   
+    - name: Build macOS App Bundle
+      if: matrix.os == 'macos-latest'
+      run: |
+        pyinstaller --noconfirm --onefile --windowed --add-data "icon.ico:." --icon=icon.ico --name "BacklogTracker" backlog_tracker.py
+        cd dist
+        zip -r BacklogTracker_macOS.zip BacklogTracker.app/
+
+    
+    - name: Upload Binary to Release
+      uses: softprops/action-gh-release@v2
+      with:
+        files: |
+          installer_output/BacklogTracker_Setup.exe
+          dist/BacklogTracker_Linux.tar.gz
+          dist/BacklogTracker_macOS.zip
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
