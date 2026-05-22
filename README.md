@@ -1,6 +1,16 @@
-# Backlog Tracker
+<p align="center">
+  <img src="assets/banner.png" width="60%" alt="Backlog Tracker Banner" />
+</p>
 
-Backlog Tracker is a lightweight cross-platform desktop application designed to help students calculate, track, and systematically clear academic backlogs.
+<p align="center">
+  <img src="assets/icon_300.png" width="72" alt="Backlog Tracker Icon" />
+</p>
+
+<h1 align="center">Backlog Tracker</h1>
+
+<p align="center">A lightweight cross-platform desktop application that helps students calculate, track, and systematically clear academic backlogs.</p>
+
+---
 
 ## Features
 
@@ -12,54 +22,54 @@ Backlog Tracker is a lightweight cross-platform desktop application designed to 
 
 ---
 
-## Installation & Downloads
+## Installation
 
-### Releases
+Download the latest release for your platform:
 
-https://github.com/debojitsantra/BacklogTracker/releases/
+| Platform | Download |
+|----------|----------|
+| Windows  | [BacklogTracker_Setup.exe](https://github.com/debojitsantra/BacklogTracker/releases/download/v1.0.0/BacklogTracker_Setup.exe) |
+| Linux    | [BacklogTracker_Linux.tar.gz](https://github.com/debojitsantra/BacklogTracker/releases/download/v1.0.0/BacklogTracker_Linux.tar.gz) |
+| macOS    | [BacklogTracker_macOS.zip](https://github.com/debojitsantra/BacklogTracker/releases/download/v1.0.0/BacklogTracker_macOS.zip) *(untested)* |
 
-### Windows
+All releases: [github.com/debojitsantra/BacklogTracker/releases](https://github.com/debojitsantra/BacklogTracker/releases/)
 
-https://github.com/debojitsantra/BacklogTracker/releases/download/v1.0.0/BacklogTracker_Setup.exe
+<!-- 
+## Microsoft Store
 
-### Linux
-
-https://github.com/debojitsantra/BacklogTracker/releases/download/v1.0.0/BacklogTracker_Linux.tar.gz
-
-### macOS (I haven't tested)
-
-https://github.com/debojitsantra/BacklogTracker/releases/download/v1.0.0/BacklogTracker_macOS.zip
+[![Microsoft Store](https://get.microsoft.com/images/en-us%20dark.svg)](https://apps.microsoft.com/store/PLACEHOLDER)
+-->
 
 ---
 
 ## Local Development
 
-### Install Dependencies
-
+**Install dependencies**
 ```bash
 pip install customtkinter pillow pyinstaller
 ```
 
-### Run Locally
-
+**Run locally**
 ```bash
 python backlog_tracker.py
 ```
 
-### Build Executable
-
+**Build executable**
 ```bash
 pyinstaller --noconfirm --onefile --windowed --add-data "icon.ico;." --icon=icon.ico --name "BacklogTracker" backlog_tracker.py
 ```
 
 ---
 
-## CI/CD Releases
+## Releases via CI/CD
 
 ```bash
 git tag v1.0.1
 git push origin v1.0.1
 ```
+
+---
+
 ## Author
 
-https://github.com/debojitsantra
+[github.com/debojitsantra](https://github.com/debojitsantra)
