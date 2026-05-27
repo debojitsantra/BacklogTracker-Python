@@ -30,9 +30,9 @@ Download the latest release for your platform:
 
 | Platform | Download |
 |----------|----------|
-| Windows  | [BacklogTracker_Setup.exe](https://github.com/debojitsantra/BacklogTracker/releases/download/v1.0.0/BacklogTracker_Setup.exe) |
-| Linux    | [BacklogTracker_Linux.tar.gz](https://github.com/debojitsantra/BacklogTracker/releases/download/v1.0.0/BacklogTracker_Linux.tar.gz) |
-| macOS    | [BacklogTracker_macOS.zip](https://github.com/debojitsantra/BacklogTracker/releases/download/v1.0.0/BacklogTracker_macOS.zip) *(untested)* |
+| Windows  | [BacklogTracker_Setup.exe](https://github.com/debojitsantra/BacklogTracker/releases/download/v1.0.1/BacklogTracker_Setup.exe) |
+| Linux    | [BacklogTracker_Linux.tar.gz](https://github.com/debojitsantra/BacklogTracker/releases/download/v1.0.1/BacklogTracker_Linux.tar.gz) |
+| macOS    | [BacklogTracker_macOS.zip](https://github.com/debojitsantra/BacklogTracker/releases/download/v1.0.1/BacklogTracker_macOS.zip) *(untested)* |
 | Android | [BacklogTracker-v1.0.1-Debug.apk](https://github.com/debojitsantra/BacklogTracker-Android/releases)|
 | Web Version *(unstable)*| [backlogtracker.debojitworkers.qzz.io](https://backlogtracker.debojitworkers.qzz.io/)|
 
@@ -65,8 +65,8 @@ pyinstaller --noconfirm --onefile --windowed --add-data "icon.ico;." --icon=icon
 ## Releases via CI/CD
 
 ```bash
-git tag v1.0.1
-git push origin v1.0.1
+git tag v1.0.2
+git push origin v1.0.2
 ```
 
 ---
