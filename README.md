@@ -33,7 +33,7 @@ Download the latest release for your platform:
 | Windows  | [BacklogTracker_Setup.exe](https://github.com/debojitsantra/BacklogTracker/releases/) |
 | Linux    | [BacklogTracker_Linux.tar.gz](https://github.com/debojitsantra/BacklogTracker/releases/) |
 | macOS    | [BacklogTracker_macOS.zip](https://github.com/debojitsantra/BacklogTracker/releases/) *(untested)* |
-| Android | [BacklogTracker-v1.0.1-Debug.apk](https://github.com/debojitsantra/BacklogTracker-Android/releases)|
+| Android | [BacklogTracker-{tag}.apk](https://github.com/debojitsantra/BacklogTracker-Android/releases)|
 | Web Version *(unstable)*| [backlogtracker.debojitworkers.qzz.io](https://backlogtracker.debojitworkers.qzz.io/)|
 
 All releases: [github.com/debojitsantra/BacklogTracker/releases](https://github.com/debojitsantra/BacklogTracker/releases/)
