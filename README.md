@@ -1,9 +1,9 @@
 <p align="center">
-  <img src="assets/banner.png" width="90%" alt="Backlog Tracker Banner" />
+  <img src="assets/banner.png" width="100%" alt="Backlog Tracker Banner" />
 </p>
 
 <p align="center">
-  <img src="assets/icon_300.png" width="72" alt="Backlog Tracker Icon" />
+  <img src="assets/icon_300.png"  width=72 alt="Backlog Tracker Icon" />
 </p>
 
 <h1 align="center">Backlog Tracker</h1>
@@ -21,6 +21,11 @@
 - Motivational productivity prompts
 - Time Simulator ( Fast-forward days, weeks, or months )
 ---
+## Screenshots
+<p align="center">
+  <img src="assets/1.png" width="100%" alt="Screenshot 1" />
+    <img src="assets/2.png" width="100%" alt="Screenshot 2" />
+</p>
 
 ## Installation
 
