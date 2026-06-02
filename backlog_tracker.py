@@ -135,9 +135,9 @@ PALETTE = [
 
 DEFAULT_DATA = {
     "subjects": {},
-    "classes_per_day": 4,
+    "classes_per_day": 2,
     "skip_sunday": True,
-    "course_name": "My Course Tracker",
+    "course_name": "Arjuna JEE Batch",
     "last_updated": str(date.today()),
     "setup_done": False,
     "theme": "dark"
