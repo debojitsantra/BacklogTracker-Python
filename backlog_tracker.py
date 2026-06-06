@@ -3,6 +3,7 @@ import os
 import json
 import shutil
 import random
+import webbrowser
 from datetime import date, timedelta
 from PIL import Image, ImageDraw, ImageTk
 
@@ -365,6 +366,13 @@ class SetupWindow(ctk.CTkToplevel):
             text_color="white", font=ctk.CTkFont(size=11, weight="bold"),
             command=self.import_course_json
         ).pack(side="right")
+        ctk.CTkButton(
+            import_row, text="Download Templates",
+            height=32, corner_radius=16,
+            fg_color=SECONDARY_BG, hover_color=ACCENT,
+            text_color="white", font=ctk.CTkFont(size=11, weight="bold"),
+            command=lambda: webbrowser.open("https://backlogdesigner.pages.dev")
+        ).pack(side="right", padx=(0, 8))
 
         section(self.scroll, "📝 Target Settings")
         info_frame = ctk.CTkFrame(self.scroll, fg_color=CARD_BG, corner_radius=16) # Elevated MD3 style corners
@@ -627,12 +635,20 @@ class App(ctk.CTk):
             font=ctk.CTkFont(size=13, weight="bold"), corner_radius=22, command=lambda: SetupWindow(self, self.data, self.finish_onboarding)
         )
         start_btn.pack(expand=True, pady=(0, 12))
+        btn_row = ctk.CTkFrame(self.onboard_frame, fg_color="transparent")
+        btn_row.pack(expand=True, pady=(0, 80))
         ctk.CTkButton(
-            self.onboard_frame, text="📥 Import Existing Backup", height=36,
+            btn_row, text="📥 Import Existing Backup", height=36,
             fg_color=SECONDARY_BG, hover_color=ACCENT, text_color="white",
             font=ctk.CTkFont(size=12, weight="bold"), corner_radius=18,
             command=self._onboarding_import
-        ).pack(expand=True, pady=(0, 80))
+        ).pack(side="left", padx=6)
+        ctk.CTkButton(
+            btn_row, text="Download Templates", height=36,
+            fg_color=SECONDARY_BG, hover_color=ACCENT, text_color="white",
+            font=ctk.CTkFont(size=12, weight="bold"), corner_radius=18,
+            command=lambda: webbrowser.open("https://backlogdesigner.pages.dev")
+        ).pack(side="left", padx=6)
 
     def finish_onboarding(self):
         if hasattr(self, "onboard_frame"):

@@ -1,6 +1,7 @@
 import json
 import tkinter.filedialog as fd
 import tkinter.messagebox as mb
+import webbrowser
 
 try:
     import customtkinter as ctk
@@ -211,6 +212,12 @@ class SettingsPanel:
             text_color="white", font=ctk.CTkFont(size=10, weight="bold"),
             command=self._browse_json_file
         ).pack(side="right")
+        ctk.CTkButton(
+            import_heading, text="Download Templates", width=140, height=28,
+            corner_radius=14, fg_color=SECONDARY_BG, hover_color=ACCENT,
+            text_color="white", font=ctk.CTkFont(size=10, weight="bold"),
+            command=lambda: webbrowser.open("https://backlogdesigner.pages.dev")
+        ).pack(side="right", padx=(0, 8))
 
         ctk.CTkLabel(
             card, text="Paste raw JSON below or browse a .json file:",
