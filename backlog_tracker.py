@@ -189,7 +189,6 @@ def load_data():
             data.setdefault("last_updated", str(date.today()))
             return data
         except json.JSONDecodeError:
-          =
             backup = SAVE_FILE + ".corrupted"
             try:
                 shutil.copy2(SAVE_FILE, backup)
