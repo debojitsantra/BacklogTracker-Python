@@ -1,0 +1,26 @@
+{
+  "subjects": {
+    "Chemistry": {
+      "emoji": "🧪",
+      "color": "#ba68c8",
+      "daily_increase": 1,
+      "backlog": 0
+    },
+    "Maths": {
+      "emoji": "🧮",
+      "color": "#4fc3f7",
+      "daily_increase": 1,
+      "backlog": 0
+    },
+    "Physics": {
+      "emoji": "⚛️",
+      "color": "#FF8A65",
+      "daily_increase": 1,
+      "backlog": 0
+    }
+  },
+  "course_name": "Jee",
+  "classes_per_day": 4,
+  "skip_sunday": true,
+  "theme": "dark"
+}

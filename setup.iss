@@ -2,7 +2,7 @@
 [Setup]
 AppId={{D37F2F11-D6D2-4E38-92B1-4A53D9E99C6A}
 AppName=Backlog Tracker
-AppVersion=1.0
+AppVersion=1.1.0
 AppPublisher=Debojit Santra
 
 ; Allows installation without Admin privileges

@@ -1,9 +1,12 @@
 import sys
 import os
 import json
+import shutil
 import random
-from datetime import date, datetime, timedelta
+from datetime import date, timedelta
 from PIL import Image, ImageDraw, ImageTk
+
+from version import __version__
 
 try:
     import customtkinter as ctk
@@ -11,11 +14,16 @@ except ImportError:
     print("Error: 'customtkinter' is required. Install it using 'pip install customtkinter'.")
     sys.exit(1)
 
+
+from components.settings_panel import SettingsPanel
+
 # Windows taskbar icon grouping fix
 if os.name == 'nt':
     try:
         import ctypes
-        ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID('universal.backlogtracker.app.1.0')
+        ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(
+            f'universal.backlogtracker.app.{__version__}'
+        )
     except Exception:
         pass
 
@@ -57,17 +65,14 @@ def get_data_filepath():
 SAVE_FILE = get_data_filepath()
 SIMULATION_ACTIVE = False
 
+# Module-level warning set by load_data() when the save file is corrupted
+_data_load_warning: str | None = None
 
-
-APP_BG = "#111318"          #  Dark Surface
-CARD_BG = "#1a1c22"         #  Surface Container
-SECONDARY_BG = "#24262f"    #  Surface Container High
-ACCENT = "#a8c7fa"          #  Primary
-ACCENT_LIGHT = "#d2e3fc"    #  Primary Container
-ACCENT_YELLOW = "#f1db7d"   #  Tertiary Container
-TEXT_DIM = "#c4c6d0"        #  On-Surface Text
-SUCCESS = "#86d6a5"         #  Safe/Success Custom Tone
-DANGER = "#ffb4ab"          #  Error Custom Tone
+from theme import (
+    APP_BG, CARD_BG, SECONDARY_BG,
+    ACCENT, ACCENT_LIGHT, ACCENT_YELLOW,
+    TEXT_DIM, SUCCESS, DANGER
+)
 
 MOTIVATIONAL_QUOTES = [
     "Anxiety guesses. Mathematics calculates. You can clear this!",
@@ -138,7 +143,6 @@ DEFAULT_DATA = {
     "classes_per_day": 4,
     "skip_sunday": True,
     "course_name": "My Course Tracker",
-    "last_updated": str(date.today()),
     "setup_done": False,
     "theme": "dark"
 }
@@ -175,16 +179,31 @@ def set_window_icon(window):
         pass
 
 def load_data():
+    global _data_load_warning
     if os.path.exists(SAVE_FILE):
         try:
             with open(SAVE_FILE, "r") as f:
                 data = json.load(f)
             for k, v in DEFAULT_DATA.items():
                 data.setdefault(k, v)
+            data.setdefault("last_updated", str(date.today()))
             return data
-        except Exception:
-            pass
-    return dict(DEFAULT_DATA)
+        except json.JSONDecodeError:
+          =
+            backup = SAVE_FILE + ".corrupted"
+            try:
+                shutil.copy2(SAVE_FILE, backup)
+                _data_load_warning = (
+                    f"⚠️ Your save file was corrupted and has been reset to defaults.\n"
+                    f"A backup of the corrupted file was saved to:\n{backup}"
+                )
+            except Exception:
+                _data_load_warning = "⚠️ Your save file was corrupted and has been reset to defaults."
+        except Exception as exc:
+            print(f"[BacklogTracker] Warning: Could not load data: {exc}", file=sys.stderr)
+    fresh = dict(DEFAULT_DATA)
+    fresh["last_updated"] = str(date.today())
+    return fresh
 
 def save_data(data):
     if SIMULATION_ACTIVE:
@@ -192,8 +211,32 @@ def save_data(data):
     try:
         with open(SAVE_FILE, "w") as f:
             json.dump(data, f, indent=2)
-    except Exception:
-        pass
+    except OSError as exc:
+        print(f"[BacklogTracker] Warning: Failed to save data: {exc}", file=sys.stderr)
+
+
+def merge_course_design(existing_data: dict, imported_data: dict) -> dict:
+    """
+    Merge a course_design import into existing app data.
+    - Top-level metadata fields prefer the imported value.
+    - Subjects: only ADD subjects that don't already exist (never overwrite progress).
+    - Forces setup_done=False to trigger wizard confirmation.
+    """
+    merged = dict(existing_data)  # shallow copy
+
+    for field in ("course_name", "classes_per_day", "skip_sunday",
+                  "palette_color", "theme"):
+        if imported_data.get(field) is not None:
+            merged[field] = imported_data[field]
+
+    merged_subjects = dict(existing_data.get("subjects", {}))
+    for name, sub in imported_data.get("subjects", {}).items():
+        if name not in merged_subjects:
+            merged_subjects[name] = sub  # new subject only
+
+    merged["subjects"] = merged_subjects
+    merged["setup_done"] = False  # force wizard confirmation
+    return merged
 
 def advance_days(data):
     if not data.get("subjects"):
@@ -264,7 +307,6 @@ def days_to_clear_calendar(data):
 def section(parent, text):
     frame = ctk.CTkFrame(parent, fg_color="transparent")
     frame.pack(fill="x", padx=16, pady=(12, 4))
-    # Elegant typography matching MD3 specifications
     ctk.CTkLabel(frame, text=text, font=ctk.CTkFont(size=12, weight="bold"), text_color=ACCENT).pack(side="left")
 
 def popup(parent, text, title="Notice"):
@@ -309,12 +351,21 @@ class SetupWindow(ctk.CTkToplevel):
             self.destroy()
 
     def build(self):
-        # Master scrollable pane layout configuration 
         self.scroll = ctk.CTkScrollableFrame(self, fg_color=APP_BG, corner_radius=0)
         self.scroll.pack(fill="both", expand=True, padx=5, pady=5)
 
         ctk.CTkLabel(self.scroll, text="🎓 Set Up Your Dashboard", font=ctk.CTkFont(size=24, weight="bold"), text_color="white").pack(pady=(16, 2))
-        ctk.CTkLabel(self.scroll, text="Set daily targets and structure your active curriculum.", text_color=TEXT_DIM, font=ctk.CTkFont(size=12)).pack(pady=(0, 14))
+        ctk.CTkLabel(self.scroll, text="Set daily targets and structure your active curriculum.", text_color=TEXT_DIM, font=ctk.CTkFont(size=12)).pack(pady=(0, 6))
+
+        import_row = ctk.CTkFrame(self.scroll, fg_color="transparent")
+        import_row.pack(fill="x", padx=16, pady=(0, 10))
+        ctk.CTkButton(
+            import_row, text="📥 Import Course Design / Backup",
+            height=32, corner_radius=16,
+            fg_color=SECONDARY_BG, hover_color=ACCENT,
+            text_color="white", font=ctk.CTkFont(size=11, weight="bold"),
+            command=self.import_course_json
+        ).pack(side="right")
 
         section(self.scroll, "📝 Target Settings")
         info_frame = ctk.CTkFrame(self.scroll, fg_color=CARD_BG, corner_radius=16) # Elevated MD3 style corners
@@ -502,24 +553,70 @@ class SetupWindow(ctk.CTkToplevel):
         self.destroy()
         self.on_done()
 
+    def import_course_json(self):
+        """Open a JSON file, validate it, and reload the wizard with merged data."""
+        import tkinter.filedialog as fd
+        from utils.validation import validate_and_parse_import
+
+        filepath = fd.askopenfilename(
+            parent=self,
+            title="Import Course Design or Full Backup",
+            filetypes=[("JSON files", "*.json"), ("All files", "*.*")]
+        )
+        if not filepath:
+            return
+
+        try:
+            with open(filepath, "r", encoding="utf-8") as f:
+                raw = f.read()
+        except OSError as exc:
+            popup(self, f"Could not read file:\n{exc}", "Import Error")
+            return
+
+        result = validate_and_parse_import(raw)
+        if not result["success"]:
+            popup(self, f"Validation failed:\n{result['error']}", "Import Error")
+            return
+
+        imported = result["data"]
+        if result["type"] == "full_backup":
+            new_data = imported
+        else:  # course_design
+            new_data = merge_course_design(self.data, imported)
+
+        new_data["setup_done"] = False
+        save_data(new_data)
+
+        # Re-open wizard with the imported data
+        parent = self.master
+        on_done = self.on_done
+        self.destroy()
+        SetupWindow(parent, new_data, on_done)
+
 
 class App(ctk.CTk):
     def __init__(self):
         super().__init__()
-        self.geometry("640x900") 
-        self.title("Backlog Tracker")
+        self.geometry("640x900")
+        self.title(f"Backlog Tracker v{__version__}")
         self.configure(fg_color=APP_BG)
         set_window_icon(self)
 
         self.is_simulating = False
         self.real_data = None
+        self._undo_stack = []  # list of (subject_name, old_backlog) for undo
 
         self.data = advance_days(load_data())
+        self.minsize(480, 600)
 
         if not self.data.get("setup_done") or not self.data.get("subjects"):
             self.display_onboarding()
         else:
             self.build_dashboard()
+
+        # Show data-corruption warning after window is ready
+        if _data_load_warning:
+            self.after(300, lambda: popup(self, _data_load_warning, "Data Warning"))
 
     def display_onboarding(self):
         self.onboard_frame = ctk.CTkFrame(self, fg_color="transparent")
@@ -530,7 +627,13 @@ class App(ctk.CTk):
             self.onboard_frame, text="Initialize Setup Wizard ⚙️", height=44, fg_color=ACCENT, hover_color=ACCENT_LIGHT, text_color=APP_BG,
             font=ctk.CTkFont(size=13, weight="bold"), corner_radius=22, command=lambda: SetupWindow(self, self.data, self.finish_onboarding)
         )
-        start_btn.pack(expand=True, pady=(0, 80))
+        start_btn.pack(expand=True, pady=(0, 12))
+        ctk.CTkButton(
+            self.onboard_frame, text="📥 Import Existing Backup", height=36,
+            fg_color=SECONDARY_BG, hover_color=ACCENT, text_color="white",
+            font=ctk.CTkFont(size=12, weight="bold"), corner_radius=18,
+            command=self._onboarding_import
+        ).pack(expand=True, pady=(0, 80))
 
     def finish_onboarding(self):
         if hasattr(self, "onboard_frame"):
@@ -555,22 +658,32 @@ class App(ctk.CTk):
         title_row.pack(fill="x", padx=16, pady=(14, 2))
         ctk.CTkLabel(title_row, text=f"🎓 {self.data['course_name']}", font=ctk.CTkFont(size=18, weight="bold"), text_color="white").pack(side="left")
 
-        # Configuration button pill-shaped 
+        # Configuration button pill-shaped
         def open_config():
             if self.is_simulating:
                 self.revert_time_simulation()
             SetupWindow(self, self.data, self.reload_and_refresh)
 
         ctk.CTkButton(
-            title_row, text="Configure App ⚙️", width=110, height=28, fg_color=SECONDARY_BG, hover_color=ACCENT, text_color="white",
+            title_row, text="📋 Edit Subjects", width=110, height=28, fg_color=SECONDARY_BG, hover_color=ACCENT, text_color="white",
             corner_radius=14, font=ctk.CTkFont(size=11, weight="bold"), command=open_config
         ).pack(side="right")
 
-        motivation_frame = ctk.CTkFrame(header_frame, fg_color=SECONDARY_BG, corner_radius=12) # Modern rounded MD3 highlight box
-        motivation_frame.pack(fill="x", padx=16, pady=(4, 12))
-        
+        ctk.CTkButton(
+            title_row, text="⚙️ Settings", width=90, height=28, fg_color=SECONDARY_BG, hover_color=ACCENT, text_color="white",
+            corner_radius=14, font=ctk.CTkFont(size=11, weight="bold"), command=self.open_settings
+        ).pack(side="right", padx=(0, 6))
+
+        # Keyboard shortcuts
+        self.bind("<Control-s>", lambda e: self.refresh_dashboard())
+        self.bind("<Control-z>", lambda e: self.undo_last_tweak())
+        self.bind("<Control-comma>", lambda e: self.open_settings())
+
+        self.motivation_frame = ctk.CTkFrame(header_frame, fg_color=SECONDARY_BG, corner_radius=12)
+        if self.data.get("show_quotes", True):
+            self.motivation_frame.pack(fill="x", padx=16, pady=(4, 12))
         selected_quote = random.choice(MOTIVATIONAL_QUOTES)
-        self.quote_label = ctk.CTkLabel(motivation_frame, text=f"🔥 \"{selected_quote}\"", text_color=ACCENT, wraplength=540, justify="center", font=ctk.CTkFont(size=11, slant="italic", weight="bold"))
+        self.quote_label = ctk.CTkLabel(self.motivation_frame, text=f"🔥 \"{selected_quote}\"", text_color=ACCENT, wraplength=540, justify="center", font=ctk.CTkFont(size=11, slant="italic", weight="bold"))
         self.quote_label.pack(fill="x", padx=12, pady=8)
 
         kpi_frame = ctk.CTkFrame(self, fg_color="transparent")
@@ -610,7 +723,6 @@ class App(ctk.CTk):
         self.chart_canvas.pack(fill="x", padx=14, pady=(0, 8))
         self.chart_canvas.bind("<Configure>", lambda event: self.draw_visual_insights())
 
-       
         self.subject_scroll = ctk.CTkScrollableFrame(self, fg_color="transparent")
         self.subject_scroll.pack(fill="both", expand=True, padx=8)
 
@@ -626,14 +738,20 @@ class App(ctk.CTk):
         lbl_sim_title.pack(anchor="w", padx=14, pady=(10, 2))
 
         lbl_sim_desc = ctk.CTkLabel(
-            self.sim_frame, 
-            text="Simulate your course release timeline. Fast forward elapsed time to inspect the terrifying compound effects of neglecting core daily watches. Ensure you don't actually lose your active states!", 
-            font=ctk.CTkFont(size=10), 
-            text_color=TEXT_DIM, 
-            wraplength=580, 
+            self.sim_frame,
+            text="Simulate your course release timeline. Fast forward elapsed time to inspect the terrifying compound effects of neglecting core daily watches. Ensure you don't actually lose your active states!",
+            font=ctk.CTkFont(size=10),
+            text_color=TEXT_DIM,
+            wraplength=580,
             justify="left"
         )
-        lbl_sim_desc.pack(anchor="w", padx=14, pady=(0, 10))
+        lbl_sim_desc.pack(anchor="w", padx=14, pady=(0, 4))
+
+        ctk.CTkLabel(
+            self.sim_frame,
+            text="Each button previews from today — clicking again replaces the previous simulation.",
+            font=ctk.CTkFont(size=9), text_color=TEXT_DIM
+        ).pack(anchor="w", padx=14, pady=(0, 8))
 
         sim_btn_row = ctk.CTkFrame(self.sim_frame, fg_color="transparent")
         sim_btn_row.pack(fill="x", padx=14, pady=(0, 10))
@@ -685,6 +803,13 @@ class App(ctk.CTk):
             else:
                 self.refresh_dashboard()
 
+        self.btn_undo = ctk.CTkButton(
+            footer, text="Undo ↩", width=72, height=30, corner_radius=15,
+            fg_color=SECONDARY_BG, hover_color=ACCENT_YELLOW, text_color=TEXT_DIM,
+            font=ctk.CTkFont(size=10, weight="bold"),
+            state="disabled", command=self.undo_last_tweak
+        )
+        self.btn_undo.pack(side="right", padx=(0, 6))
         ctk.CTkButton(footer, text="Sync Changes 🔄", width=120, height=30, corner_radius=15, fg_color=SECONDARY_BG, hover_color=ACCENT, text_color="white", command=sync_changes).pack(side="right")
         self.refresh_dashboard()
 
@@ -791,23 +916,32 @@ class App(ctk.CTk):
         lbl_qty.pack(anchor="e")
 
         progress_bar = ctk.CTkProgressBar(card, height=6, progress_color=color, fg_color=SECONDARY_BG)
-        progress_bar.pack(fill="x", padx=14, pady=(0, 8))
+        progress_bar.pack(fill="x", padx=14, pady=(0, 4))
         progress_bar.set(0)
+
+        # "Last studied" date badge
+        last_studied = s_data.get("last_studied")
+        last_studied_txt = f"Last studied: {last_studied}" if last_studied else "Not yet studied"
+        lbl_last = ctk.CTkLabel(
+            card, text=last_studied_txt,
+            font=ctk.CTkFont(size=9), text_color=TEXT_DIM
+        )
+        lbl_last.pack(anchor="w", padx=14, pady=(0, 4))
 
         interactions = ctk.CTkFrame(card, fg_color="transparent")
         interactions.pack(fill="x", padx=14, pady=(0, 10))
 
-       
         ctk.CTkButton(interactions, text="➕ Class Added", width=110, height=28, corner_radius=14, fg_color=SECONDARY_BG, hover_color=DANGER, font=ctk.CTkFont(size=10, weight="bold"), command=lambda: self.tweak_backlog_metric(name, 1)).pack(side="left", padx=(0, 6))
         ctk.CTkButton(
-            interactions, text="✅ Completed Class", width=130, height=28, corner_radius=14, fg_color=color, 
-            text_color=APP_BG if self.get_brightness_is_high(color) else "#fff", hover_color="#ffffff", 
+            interactions, text="✅ Completed Class", width=130, height=28, corner_radius=14, fg_color=color,
+            text_color=APP_BG if self.get_brightness_is_high(color) else "#fff", hover_color="#ffffff",
             font=ctk.CTkFont(size=10, weight="bold"), command=lambda: self.tweak_backlog_metric(name, -1)
         ).pack(side="left")
 
         self.cards_dict[name] = {
             "qty_label": lbl_qty,
             "progress": progress_bar,
+            "last_studied_label": lbl_last,
             "growth_entry": growth_entry,
             "growth_var": growth_var
         }
@@ -825,8 +959,21 @@ class App(ctk.CTk):
         if self.is_simulating:
             self.revert_time_simulation()
         curr = self.data["subjects"][name].get("backlog", 0)
-        self.data["subjects"][name]["backlog"] = max(0, curr + amount)
+        new_val = max(0, curr + amount)
+        # Record undo state before applying change
+        self._undo_stack.append((name, curr))
+        if len(self._undo_stack) > 20:
+            self._undo_stack.pop(0)
+        self.data["subjects"][name]["backlog"] = new_val
+        # Record last-studied date when completing a class
+        if amount < 0 and new_val < curr:
+            self.data["subjects"][name]["last_studied"] = str(date.today())
         save_data(self.data)
+        # Enable undo button
+        try:
+            self.btn_undo.configure(state="normal", text_color="white")
+        except Exception:
+            pass
         self.refresh_dashboard()
 
     def update_global_target(self):
@@ -877,12 +1024,19 @@ class App(ctk.CTk):
             s = self.data["subjects"][name]
             backlog_count = s.get("backlog", 0)
             widgets["qty_label"].configure(text=f"{backlog_count} Lectures")
-            
-            progress_ratio = 1.0 - (backlog_count / max_item_backlog) if max_item_backlog > 0 else 1.0
-            widgets["progress"].set(max(0.02, progress_ratio))
+            # Progress bar fills with backlog level (danger indicator — full = most backlog)
+            progress_ratio = backlog_count / max_item_backlog if max_item_backlog > 0 else 0.0
+            widgets["progress"].set(progress_ratio if backlog_count > 0 else 0.0)
             widgets["growth_var"].set(str(s.get("daily_increase", 1)))
+            # Refresh last-studied label
+            last_studied = s.get("last_studied")
+            ls_txt = f"Last studied: {last_studied}" if last_studied else "Not yet studied"
+            try:
+                widgets["last_studied_label"].configure(text=ls_txt)
+            except (KeyError, Exception):
+                pass
 
-        if total > 0 and random.random() < 0.25:
+        if total > 0 and random.random() < 0.25 and self.data.get("show_quotes", True):
             self.quote_label.configure(text=f"🔥 \"{random.choice(MOTIVATIONAL_QUOTES)}\"")
 
         self.draw_visual_insights()
@@ -932,7 +1086,7 @@ class App(ctk.CTk):
 
         # Reset Simulator UI
         self.lbl_sim_status.configure(
-            text="🟢 Tracking real-time course backlog.", 
+            text="🟢 Tracking real-time course backlog.",
             text_color=SUCCESS
         )
         self.btn_revert.pack_forget()
@@ -940,6 +1094,127 @@ class App(ctk.CTk):
 
         # Refresh dashboard back to real state
         self.refresh_dashboard()
+
+    # ── Settings integration ───────────────────────────────────────────────
+
+    def open_settings(self):
+        """Open the Settings modal panel."""
+        if self.is_simulating:
+            self.revert_time_simulation()
+
+        callbacks = {
+            "on_update_data":           self._on_update_data,
+            "on_import_full_backup":    self.on_import_full_backup,
+            "on_import_course_design":  self.on_import_course_design,
+            "on_toggle_theme":          self.on_toggle_theme,
+            "on_toggle_quotes":         self.on_toggle_quotes,
+        }
+        SettingsPanel(self, self.data, callbacks)
+
+    def _on_update_data(self, new_data: dict):
+        """Generic: save updated data and re-render dashboard."""
+        self.data = new_data
+        save_data(self.data)
+        self.reload_and_refresh()
+
+    def on_import_full_backup(self, new_data: dict):
+        """
+        Full backup import: replace app data entirely, save, and re-render.
+        """
+        self.data = new_data
+        save_data(self.data)
+        self.reload_and_refresh()
+
+    def on_import_course_design(self, imported_data: dict):
+        """
+        Course design import: merge subjects (existing NOT overwritten),
+        save, then re-open the Setup Wizard for user confirmation.
+        """
+        merged = merge_course_design(self.data, imported_data)
+        self.data = merged
+        save_data(self.data)
+
+        # Destroy current dashboard and re-open wizard
+        for widget in self.winfo_children():
+            widget.destroy()
+        SetupWindow(self, self.data, self.finish_onboarding)
+
+    def on_toggle_theme(self, theme: str):
+        """
+        Persist theme preference and apply it immediately.
+        """
+        self.data["theme"] = theme
+        save_data(self.data)
+        try:
+            ctk.set_appearance_mode("Dark" if theme == "dark" else "Light")
+            self.update_idletasks()
+        except Exception:
+            pass
+
+    def on_toggle_quotes(self, show: bool):
+        """Persist quotes preference and toggle the motivation frame visibility."""
+        self.data["show_quotes"] = show
+        save_data(self.data)
+        try:
+            if show:
+                self.motivation_frame.pack(fill="x", padx=16, pady=(4, 12))
+            else:
+                self.motivation_frame.pack_forget()
+        except Exception:
+            pass
+
+    def undo_last_tweak(self):
+        """Revert the most recent manual backlog change (Ctrl+Z)."""
+        if not self._undo_stack:
+            return
+        name, old_val = self._undo_stack.pop()
+        if name in self.data.get("subjects", {}):
+            self.data["subjects"][name]["backlog"] = old_val
+            save_data(self.data)
+            self.refresh_dashboard()
+        # Disable undo button when stack is empty
+        if not self._undo_stack:
+            try:
+                self.btn_undo.configure(state="disabled", text_color=TEXT_DIM)
+            except Exception:
+                pass
+
+    def _onboarding_import(self):
+        """Import a backup or course design directly from the onboarding screen."""
+        import tkinter.filedialog as fd
+        from utils.validation import validate_and_parse_import
+
+        filepath = fd.askopenfilename(
+            parent=self,
+            title="Import Backup or Course Design",
+            filetypes=[("JSON files", "*.json"), ("All files", "*.*")]
+        )
+        if not filepath:
+            return
+        try:
+            with open(filepath, "r", encoding="utf-8") as f:
+                raw = f.read()
+        except OSError as exc:
+            popup(self, f"Could not read file:\n{exc}", "Import Error")
+            return
+
+        result = validate_and_parse_import(raw)
+        if not result["success"]:
+            popup(self, f"Validation failed:\n{result['error']}", "Import Error")
+            return
+
+        imported = result["data"]
+        if result["type"] == "full_backup":
+            new_data = imported
+        else:
+            new_data = merge_course_design(self.data, imported)
+        new_data["setup_done"] = False
+        save_data(new_data)
+        self.data = new_data
+
+        if hasattr(self, "onboard_frame"):
+            self.onboard_frame.destroy()
+        SetupWindow(self, self.data, self.finish_onboarding)
 
 
 if __name__ == "__main__":
