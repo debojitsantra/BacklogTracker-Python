@@ -1,18 +1,4 @@
-<p align="center">
-  <img src="assets/banner.png" width="100%" alt="Backlog Tracker Banner" />
-</p>
-
-<p align="center">
-  <img src="assets/icon_300.png"  width=72 alt="Backlog Tracker Icon" />
-</p>
-
-<h1 align="center">Backlog Tracker</h1>
-
-<p align="center">A lightweight cross-platform desktop application that helps students calculate, track, and systematically clear academic backlogs.</p>
-
-
-#### [**Android Version Repo**](https://github.com/debojitsantra/BacklogTracker-Android/)
-
+# Backlog Tracker Python
 ---
 
 ## Features
